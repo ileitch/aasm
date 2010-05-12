@@ -230,13 +230,13 @@ describe AASM, '- event firing without persistence' do
     foo.aasm_current_state.should == :closed
   end
 
-  it 'should attempt to persist if aasm_write_state is defined' do
+  it 'should not attempt to persist if aasm_write_state is defined' do
     foo = Foo.new
 
     def foo.aasm_write_state
     end
 
-    foo.should_receive(:aasm_write_state_without_persistence)
+    foo.should_receive(:aasm_write_state_without_persistence).twice
 
     foo.close
   end
