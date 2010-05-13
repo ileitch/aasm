@@ -62,14 +62,20 @@ begin
   class Doomed < ActiveRecord::Base
     include AASM
 
-    attr_accessor :aasm_state
-
     aasm_initial_state :alive
     aasm_state :alive
     aasm_state :dead
 
     aasm_event :die do
       transitions :to => :dead, :from => :alive
+    end
+
+    def aasm_state
+      read_attribute(:aasm_state)
+    end
+
+    def aasm_state=(state)
+      write_attribute(:aasm_state, state)
     end
 
     validate :failing_validation
@@ -267,6 +273,26 @@ begin
         @doomed.die!
       rescue Doomed::AASMPersistenceFailure => e
         e.model.errors.on(:base).should == "hi mom!"
+      end
+    end
+
+    it "should give a detailed message about the sate transition that failed" do
+      Doomed.aasm_raise_on_persistence_failure true
+      begin
+        @doomed.aasm_state = :alive
+        @doomed.die!
+      rescue Doomed::AASMPersistenceFailure => e
+        e.message.should == "Failed to transition Doomed from state 'alive' to 'dead'"
+      end
+    end
+
+    it "should not rollback the state if save fails" do
+      Doomed.aasm_raise_on_persistence_failure true
+      begin
+        @doomed.aasm_state = :alive
+        @doomed.die!
+      rescue Doomed::AASMPersistenceFailure => e
+        @doomed.aasm_state.should == 'dead'
       end
     end
   end

@@ -90,7 +90,9 @@ module AASM
           AASM::StateMachine[self].config.column
         end
 
-        # TODO doco
+        # If set to true, attempts to save the new state on an invalid object will raise an AASMPersistenceFailure error.
+        #
+        # Note that the state value on the invalid object is NOT set back to the original state.
         def aasm_raise_on_persistence_failure(set_bool=nil)
           if set_bool.nil?
             AASM::StateMachine[self].config.raise_on_persistence_failure || false
@@ -190,9 +192,9 @@ module AASM
         class AASMPersistenceFailure < Exception
           attr_reader :model
 
-          def initialize(model)
+          def initialize(current_state, expected_state, model)
             @model = model
-            super() # No message
+            super("Failed to transition #{model.class.name} from state '#{current_state}' to '#{expected_state}'")
           end
         end
 
@@ -211,7 +213,7 @@ module AASM
 
           unless save
             if self.class.aasm_raise_on_persistence_failure
-              raise AASMPersistenceFailure.new(self)
+              raise AASMPersistenceFailure.new(old_value, state.to_s, self)
             else
               write_attribute(self.class.aasm_column, old_value)
               return false
