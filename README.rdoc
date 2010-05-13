@@ -95,7 +95,7 @@ This example uses a few of the more complex features available.
     
     aasm_initial_state Proc.new { |relationship| relationship.strictly_for_fun? ? :intimate : :dating }
     
-    # Raise an AASMPersistenceFailure error if the state cannot be updated due to validation errors on the ActiveRecord model.
+    # Raise an AASM::PersistenceError error if the state cannot be updated due to validation errors on the ActiveRecord model.
     # Default is false. Only available on ActiveRecord models.
     aasm_raise_on_persistence_failure true
 

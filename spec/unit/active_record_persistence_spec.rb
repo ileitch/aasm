@@ -264,14 +264,14 @@ begin
 
     it "should raise an error if raising is enabled" do
       Doomed.aasm_raise_on_persistence_failure true
-      expect { @doomed.die! }.should raise_error(Doomed::AASMPersistenceFailure)
+      expect { @doomed.die! }.should raise_error(AASM::PersistenceError)
     end
 
     it "should raise an error with an accessor for the invalid model instance" do
       Doomed.aasm_raise_on_persistence_failure true
       begin
         @doomed.die!
-      rescue Doomed::AASMPersistenceFailure => e
+      rescue AASM::PersistenceError => e
         e.model.errors.on(:base).should == "hi mom!"
       end
     end
@@ -281,7 +281,7 @@ begin
       begin
         @doomed.aasm_state = :alive
         @doomed.die!
-      rescue Doomed::AASMPersistenceFailure => e
+      rescue AASM::PersistenceError => e
         e.message.should == "Failed to transition Doomed from state 'alive' to 'dead'"
       end
     end
@@ -291,7 +291,7 @@ begin
       begin
         @doomed.aasm_state = :alive
         @doomed.die!
-      rescue Doomed::AASMPersistenceFailure => e
+      rescue AASM::PersistenceError => e
         @doomed.aasm_state.should == 'dead'
       end
     end

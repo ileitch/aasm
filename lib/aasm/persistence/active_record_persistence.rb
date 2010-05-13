@@ -1,4 +1,13 @@
 module AASM
+  class PersistenceError < Exception
+    attr_reader :model
+
+    def initialize(current_state, expected_state, model)
+      @model = model
+      super("Failed to transition #{model.class.name} from state '#{current_state}' to '#{expected_state}'")
+    end
+  end
+
   module Persistence
     module ActiveRecordPersistence
       # This method:
@@ -90,7 +99,7 @@ module AASM
           AASM::StateMachine[self].config.column
         end
 
-        # If set to true, attempts to save the new state on an invalid object will raise an AASMPersistenceFailure error.
+        # If set to true, attempts to save the new state on an invalid object will raise an AASM::PersistenceError error.
         #
         # Note that the state value on the invalid object is NOT set back to the original state.
         def aasm_raise_on_persistence_failure(set_bool=nil)
@@ -189,15 +198,6 @@ module AASM
       end
 
       module WriteState
-        class AASMPersistenceFailure < Exception
-          attr_reader :model
-
-          def initialize(current_state, expected_state, model)
-            @model = model
-            super("Failed to transition #{model.class.name} from state '#{current_state}' to '#{expected_state}'")
-          end
-        end
-
         # Writes <tt>state</tt> to the state column and persists it to the database
         #
         #   foo = Foo.find(1)
@@ -213,7 +213,7 @@ module AASM
 
           unless save
             if self.class.aasm_raise_on_persistence_failure
-              raise AASMPersistenceFailure.new(old_value, state.to_s, self)
+              raise AASM::PersistenceError.new(old_value, state.to_s, self)
             else
               write_attribute(self.class.aasm_column, old_value)
               return false
