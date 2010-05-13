@@ -275,7 +275,7 @@ end
 describe AASM, '- event callbacks' do
   describe "with an error callback defined" do
     before do
-      class Foo
+      class ::Foo
         aasm_event :safe_close, :success => :success_callback, :error => :error_callback do
           transitions :to => :closed, :from => [:open]
         end
