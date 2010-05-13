@@ -90,6 +90,15 @@ module AASM
           AASM::StateMachine[self].config.column
         end
 
+        # TODO doco
+        def aasm_raise_on_persistence_failure(set_bool=nil)
+          if set_bool.nil?
+            AASM::StateMachine[self].config.raise_on_persistence_failure || false
+          else
+            AASM::StateMachine[self].config.raise_on_persistence_failure = set_bool
+          end
+        end
+
         def find_in_state(number, state, *args)
           with_state_scope state do
             find(number, *args)
@@ -178,6 +187,15 @@ module AASM
       end
 
       module WriteState
+        class AASMPersistenceFailure < Exception
+          attr_reader :model
+
+          def initialize(model)
+            @model = model
+            super() # No message
+          end
+        end
+
         # Writes <tt>state</tt> to the state column and persists it to the database
         #
         #   foo = Foo.find(1)
@@ -191,9 +209,13 @@ module AASM
           old_value = read_attribute(self.class.aasm_column)
           write_attribute(self.class.aasm_column, state.to_s)
 
-          unless self.save
-            write_attribute(self.class.aasm_column, old_value)
-            return false
+          unless save
+            if self.class.aasm_raise_on_persistence_failure
+              raise AASMPersistenceFailure.new(self)
+            else
+              write_attribute(self.class.aasm_column, old_value)
+              return false
+            end
           end
 
           true

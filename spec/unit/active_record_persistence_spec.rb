@@ -59,12 +59,45 @@ begin
     attr_accessor :skilled, :aasm_state
   end
 
+  class Doomed < ActiveRecord::Base
+    include AASM
+
+    attr_accessor :aasm_state
+
+    aasm_initial_state :alive
+    aasm_state :alive
+    aasm_state :dead
+
+    aasm_event :die do
+      transitions :to => :dead, :from => :alive
+    end
+
+    validate :failing_validation
+
+    def failing_validation
+      errors.add_to_base("hi mom!")
+    end
+
+    # We don't have a db connection so mimic ActiveRecord behaviour
+    def save
+      valid?
+    end
+
+    def save!
+      save || raise(RecordNotFound)
+    end
+  end
+
   describe "aasm model", :shared => true do
     it "should include AASM::Persistence::ActiveRecordPersistence" do
       @klass.included_modules.should be_include(AASM::Persistence::ActiveRecordPersistence)
     end
     it "should include AASM::Persistence::ActiveRecordPersistence::InstanceMethods" do
       @klass.included_modules.should be_include(AASM::Persistence::ActiveRecordPersistence::InstanceMethods)
+    end
+
+    it "should respond to aasm_raise_on_persistence_failure" do
+      @klass.should respond_to(:aasm_raise_on_persistence_failure)
     end
   end
 
@@ -132,10 +165,18 @@ begin
     end
   end
 
-  describe FooBar, "instance methods" do
+  describe "a fake model", :shared => true do
     before(:each) do
       connection = mock(Connection, :columns => [])
-      FooBar.stub!(:connection).and_return(connection)
+      klass.stub!(:connection).and_return(connection)
+    end
+  end
+
+  describe FooBar, "instance methods" do
+    it_should_behave_like "a fake model"
+
+    def klass
+      FooBar
     end
 
     it "should respond to aasm read state when not previously defined" do
@@ -191,8 +232,45 @@ begin
       foo.should_not_receive(:aasm_ensure_initial_state)
       foo.valid?
     end
-
   end
+
+
+  describe Doomed, "- when persisting with error raising" do
+    it_should_behave_like "a fake model"
+
+    def klass
+      Doomed
+    end
+
+    before(:each) do
+      @doomed = Doomed.new
+    end
+
+    it "should default to not raising errors" do
+      FooBar.aasm_raise_on_persistence_failure.should be_false
+      expect { @doomed.die! }.should_not raise_error
+    end
+
+    it "should not raise an error if raising is explicitly disabled" do
+      FooBar.aasm_raise_on_persistence_failure false
+      expect { @doomed.die! }.should_not raise_error
+    end
+
+    it "should raise an error if raising is enabled" do
+      Doomed.aasm_raise_on_persistence_failure true
+      expect { @doomed.die! }.should raise_error(Doomed::AASMPersistenceFailure)
+    end
+
+    it "should raise an error with an accessor for the invalid model instance" do
+      Doomed.aasm_raise_on_persistence_failure true
+      begin
+        @doomed.die!
+      rescue Doomed::AASMPersistenceFailure => e
+        e.model.errors.on(:base).should == "hi mom!"
+      end
+    end
+  end
+
 
   describe 'Beavers' do
     it "should have the same states as it's parent" do

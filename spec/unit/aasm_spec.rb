@@ -83,6 +83,9 @@ describe AASM, '- class level definitions' do
     Foo.should respond_to(:aasm_events)
   end
 
+  it "should not define a class level aasm_raise_on_persistence_failure on its including class" do
+    Foo.should_not respond_to(:aasm_raise_on_persistence_failure)
+  end
 end
 
 
