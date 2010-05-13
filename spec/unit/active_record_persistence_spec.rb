@@ -81,16 +81,13 @@ begin
     validate :failing_validation
 
     def failing_validation
-      errors.add_to_base("hi mom!")
+      errors.add_to_base('Hi Mom!')
+      errors.add_to_base('Dad, you suck')
     end
 
     # We don't have a db connection so mimic ActiveRecord behaviour
     def save
       valid?
-    end
-
-    def save!
-      save || raise(RecordNotFound)
     end
   end
 
@@ -269,20 +266,43 @@ begin
 
     it "should raise an error with an accessor for the invalid model instance" do
       Doomed.aasm_raise_on_persistence_failure true
+
       begin
         @doomed.die!
       rescue AASM::PersistenceError => e
-        e.model.errors.on(:base).should == "hi mom!"
+        e.model.errors.on(:base).sort.should == ['Hi Mom!', 'Dad, you suck'].sort
       end
     end
 
-    it "should give a detailed message about the sate transition that failed" do
+    it "should give a detailed message about the sate transition that failed for new records" do
       Doomed.aasm_raise_on_persistence_failure true
+      @doomed.aasm_state = :alive
+
       begin
-        @doomed.aasm_state = :alive
         @doomed.die!
       rescue AASM::PersistenceError => e
-        e.message.should == "Failed to transition Doomed from state 'alive' to 'dead'"
+        e.message.should == "Failed to transition Doomed(new record) from state 'alive' to 'dead': 'Hi Mom!', 'Dad, you suck'"
+      end
+    end
+
+    it "should give a detailed message about the sate transition that failed for existing records" do
+      Doomed.aasm_raise_on_persistence_failure true
+      @doomed.aasm_state = :alive
+
+      class << @doomed
+        def new_record?
+          false
+        end
+
+        def id
+          69
+        end
+      end
+
+      begin
+        @doomed.die!
+      rescue AASM::PersistenceError => e
+        e.message.should == "Failed to transition Doomed(69) from state 'alive' to 'dead': 'Hi Mom!', 'Dad, you suck'"
       end
     end
 

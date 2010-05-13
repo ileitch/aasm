@@ -4,7 +4,9 @@ module AASM
 
     def initialize(current_state, expected_state, model)
       @model = model
-      super("Failed to transition #{model.class.name} from state '#{current_state}' to '#{expected_state}'")
+      id = @model.new_record? ? 'new record' : @model.id
+      errors = @model.errors.full_messages.map {|m| "'#{m}'"}.join(', ')
+      super("Failed to transition #{model.class.name}(#{id}) from state '#{current_state}' to '#{expected_state}': #{errors}")
     end
   end
 
